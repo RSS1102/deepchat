@@ -4,6 +4,7 @@ import fs from 'fs'
 import { ConversationsTable } from './tables/conversations'
 import { MessagesTable } from './tables/messages'
 import { AttachmentsTable } from './tables/attachments'
+import { GroupsTable, GroupRow } from './tables/groups'
 import {
   ISQLitePresenter,
   SQLITE_MESSAGE,
@@ -19,15 +20,15 @@ export enum ImportMode {
   INCREMENT = 'increment', // 增量导入
   OVERWRITE = 'overwrite' // 覆盖导入
 }
-
 export class SQLitePresenter implements ISQLitePresenter {
-  private db!: Database.Database
-  private conversationsTable!: ConversationsTable
-  private messagesTable!: MessagesTable
-  private attachmentsTable!: AttachmentsTable
-  private messageAttachmentsTable!: MessageAttachmentsTable
-  private currentVersion: number = 0
-  private dbPath: string
+  private db!: Database.Database;
+  private conversationsTable!: ConversationsTable;
+  private messagesTable!: MessagesTable;
+  private attachmentsTable!: AttachmentsTable;
+  private messageAttachmentsTable!: MessageAttachmentsTable;
+  private groupsTable!: GroupsTable;
+  private currentVersion: number = 0;
+  private dbPath: string;
 
   constructor(dbPath: string, password?: string) {
     this.dbPath = dbPath
@@ -91,6 +92,7 @@ export class SQLitePresenter implements ISQLitePresenter {
       this.migrate()
     }
   }
+
   async deleteAllMessagesInConversation(conversationId: string): Promise<void> {
     return this.messagesTable.deleteAllInConversation(conversationId)
   }
@@ -134,12 +136,31 @@ export class SQLitePresenter implements ISQLitePresenter {
     this.messagesTable = new MessagesTable(this.db)
     this.attachmentsTable = new AttachmentsTable(this.db)
     this.messageAttachmentsTable = new MessageAttachmentsTable(this.db)
+    this.groupsTable = new GroupsTable(this.db)
 
     // 创建所有表
     this.conversationsTable.createTable()
     this.messagesTable.createTable()
     this.attachmentsTable.createTable()
     this.messageAttachmentsTable.createTable()
+    this.groupsTable.createTable()
+  }
+
+  // 分组相关 CRUD
+  public async createGroup(name: string): Promise<number> {
+    return this.groupsTable.insert(name)
+  }
+
+  public async getGroups(): Promise<GroupRow[]> {
+    return this.groupsTable.getAll()
+  }
+
+  public async updateGroup(id: number, name: string): Promise<void> {
+    this.groupsTable.update(id, name)
+  }
+
+  public async deleteGroup(id: number): Promise<void> {
+    this.groupsTable.delete(id)
   }
 
   private initVersionTable() {
